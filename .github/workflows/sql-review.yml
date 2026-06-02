@@ -1,0 +1,108 @@
+name: SQL Risk Review
+
+on:
+  pull_request:
+    paths:
+      - '**/*.sql'
+      - '**/migrations/**'
+      - '**/queries/**'
+      - '**/database/**'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  sql-review:
+    runs-on: ubuntu-latest
+    name: SQL Risk Audit
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install SafeSQL MCP
+        run: pip install safesql-mcp
+      
+      - name: Find changed SQL files
+        id: changed-files
+        run: |
+          FILES=$(git diff --name-only --diff-filter=ACMR ${{ github.event.pull_request.base.sha }} ${{ github.sha }} | grep -E '\.sql$' || true)
+          echo "files<<EOF" >> $GITHUB_OUTPUT
+          echo "$FILES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "count=$(echo "$FILES" | grep -c '.' || echo 0)" >> $GITHUB_OUTPUT
+      
+      - name: Review SQL files
+        if: steps.changed-files.outputs.count > 0
+        id: review
+        run: |
+          HIGH_RISK=0
+          MEDIUM_RISK=0
+          REVIEW_BODY=""
+          
+          while IFS= read -r file; do
+            if [ -z "$file" ]; then continue; fi
+            
+            RESULT=$(safesql-review --file "$file" --format json 2>/dev/null || echo '{"error": "failed"}')
+            RISK_LEVEL=$(echo "$RESULT" | jq -r '.risk_level // "unknown"')
+            
+            if [ "$RISK_LEVEL" = "high" ]; then
+              HIGH_RISK=$((HIGH_RISK + 1))
+              REVIEW_BODY="${REVIEW_BODY}\n🔴 **HIGH RISK** in \`${file}\`\n"
+              REVIEW_BODY="${REVIEW_BODY}> $(echo "$RESULT" | jq -r '.message // "Unknown risk"')\n\n"
+            elif [ "$RISK_LEVEL" = "medium" ]; then
+              MEDIUM_RISK=$((MEDIUM_RISK + 1))
+              REVIEW_BODY="${REVIEW_BODY}\n🟡 **MEDIUM RISK** in \`${file}\`\n"
+              REVIEW_BODY="${REVIEW_BODY}> $(echo "$RESULT" | jq -r '.message // "Unknown risk"')\n\n"
+            fi
+          done <<< "${{ steps.changed-files.outputs.files }}"
+          
+          echo "high_risk=$HIGH_RISK" >> $GITHUB_OUTPUT
+          echo "medium_risk=$MEDIUM_RISK" >> $GITHUB_OUTPUT
+          
+          # Build final report
+          REPORT="## 🛡️ SafeSQL MCP - SQL Risk Review Report\n\n"
+          REPORT="${REPORT}**Files reviewed:** ${{ steps.changed-files.outputs.count }}\n"
+          REPORT="${REPORT}**High risk:** ${HIGH_RISK} | **Medium risk:** ${MEDIUM_RISK}\n\n"
+          
+          if [ "$HIGH_RISK" -gt 0 ]; then
+            REPORT="${REPORT}### ⛔ High Risk SQL Detected\n\n"
+            REPORT="${REPORT}The following high-risk SQL operations were found:\n"
+            REPORT="${REPORT}${REVIEW_BODY}\n"
+            REPORT="${REPORT}---\n"
+            REPORT="${REPORT}*Please review and fix before merging.*\n"
+          elif [ "$MEDIUM_RISK" -gt 0 ]; then
+            REPORT="${REPORT}### ⚠️ Medium Risk SQL Detected\n\n"
+            REPORT="${REPORT}The following medium-risk SQL operations were found:\n"
+            REPORT="${REPORT}${REVIEW_BODY}\n"
+            REPORT="${REPORT}---\n"
+            REPORT="${REPORT}*Consider optimizing these queries.*\n"
+          else
+            REPORT="${REPORT}### ✅ All SQL passed risk review\n\n"
+            REPORT="${REPORT}*No high or medium risk SQL detected.*\n"
+          fi
+          
+          echo "report<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$REPORT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Comment on PR
+        if: steps.changed-files.outputs.count > 0
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: safesql-review
+          message: ${{ steps.review.outputs.report }}
+      
+      - name: Fail on high risk
+        if: steps.review.outputs.high_risk > 0
+        run: |
+          echo "::error::High risk SQL detected! Please review before merging."
+          exit 1

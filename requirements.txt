@@ -1,0 +1,35 @@
+# SafeSQL MCP 依赖
+
+# MCP 协议
+mcp>=1.0.0
+
+# SQL 解析
+sqlglot>=20.0.0
+
+# 数据验证
+pydantic>=2.0.0
+
+# 配置管理
+pyyaml>=6.0
+python-dotenv>=1.0.0
+
+# 数据库连接
+psycopg2-binary>=2.9.0
+pymysql>=1.1.0
+
+# CLI 工具
+click>=8.0.0
+rich>=13.0.0
+
+# HTTP 服务器
+uvicorn>=0.20.0
+
+# 开发依赖（可选）
+# pytest>=7.0.0
+# pytest-asyncio>=0.21.0
+# pytest-cov>=4.0.0
+# black>=23.0.0
+# isort>=5.0.0
+# mypy>=1.0.0
+# flake8>=6.0.0
+# pre-commit>=3.0.0
