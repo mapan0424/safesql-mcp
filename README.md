@@ -1,12 +1,30 @@
 # SafeSQL MCP
 
-**AI Agent 安全数据库访问 MCP Server + SQL 风险审查工具**
+**AI Agent Safe Database Access MCP Server + SQL Risk Audit Tool**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![MCP Compatible](https://img.shields.io/badge/MCP-compatible-brightgreen.svg)](https://modelcontextprotocol.io/)
+[![GitHub Release](https://img.shields.io/github/v/release/mapan0424/safesql-mcp)](https://github.com/mapan0424/safesql-mcp/releases)
 
-SafeSQL MCP 是一个 Model Context Protocol (MCP) Server，为 AI Agent 提供安全的数据库访问能力。它通过 SQL 风险审查引擎，在 AI 生成的 SQL 执行前进行安全评估，防止高风险操作，确保数据库安全。
+> **SafeSQL MCP** is a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that provides secure database access for AI agents. It includes a SQL risk audit engine that evaluates SQL statements before execution, blocking high-risk operations and warning about medium-risk ones. This ensures database safety when AI models generate and execute SQL queries.
+
+**Key Features:**
+- 🛡️ **SQL Risk Audit** - Three-level risk assessment (High/Medium/Low) with configurable rules
+- 🗄️ **Multi-Database** - PostgreSQL, MySQL, Oracle support with EXPLAIN plan analysis
+- 🔌 **MCP Server** - Standard MCP protocol compatible with Claude, Cursor, Codex, and other AI tools
+- 🚀 **CI/CD Ready** - GitHub Action for automated SQL risk review in PRs
+- 🔧 **Extensible** - Custom risk rules, whitelist support, and plugin architecture
+
+**Use Cases:**
+- Safe database access for AI coding assistants (Claude Desktop, Cursor, Codex CLI)
+- SQL risk review in CI/CD pipelines
+- Database security compliance for AI-generated queries
+- Text-to-SQL application security
+
+---
+
+**SafeSQL MCP** 是一个 Model Context Protocol (MCP) Server，为 AI Agent 提供安全的数据库访问能力。它通过 SQL 风险审查引擎，在 AI 生成的 SQL 执行前进行安全评估，防止高风险操作，确保数据库安全。
 
 ## ✨ 核心特性
 
@@ -385,6 +403,7 @@ mypy src/
 - **[MCP 工具 API](docs/api/mcp-tools.md)** - 工具详细说明
 - **[CLI 命令参考](docs/api/cli-reference.md)** - 命令行工具
 - **[系统架构](docs/architecture.md)** - 架构设计
+- **[集成示例](docs/demos.md)** - Claude Desktop, Cursor, Codex CLI 等集成示例
 
 ## 🤝 贡献指南
 
