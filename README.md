@@ -18,6 +18,7 @@ SafeSQL MCP 是一个 Model Context Protocol (MCP) Server，为 AI Agent 提供�
 ### 🗄️ 多数据库支持
 - **PostgreSQL**：完整支持，包括 EXPLAIN 分析
 - **MySQL**：完整支持，包括 EXPLAIN 分析
+- **Oracle**：完整支持，包括 EXPLAIN 分析
 - **国产数据库**：预留扩展接口（虚谷、达梦、金仓等）
 
 ### 🔌 MCP Server 集成

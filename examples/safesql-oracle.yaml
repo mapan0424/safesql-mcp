@@ -1,0 +1,104 @@
+# SafeSQL MCP Oracle 数据库配置示例
+
+# 数据库连接配置
+databases:
+  # Oracle 数据库连接
+  oracle_prod:
+    type: oracle
+    host: localhost
+    port: 1521
+    database: ORCL
+    user: readonly_user
+    password: ${ORACLE_PASSWORD}
+    options:
+      # 方式1: 使用 service_name（推荐）
+      service_name: ORCL
+      
+      # 方式2: 使用 sid
+      # sid: ORCL
+      
+      # 方式3: 使用完整 DSN
+      # dsn: "localhost:1521/ORCL"
+      
+      # 连接选项
+      mode: "thin"  # thin 或 thick 模式
+      stmtcachesize: 30  # 语句缓存大小
+  
+  # Oracle 数据库连接（使用 SID）
+  oracle_legacy:
+    type: oracle
+    host: 192.168.1.100
+    port: 1521
+    database: ORCL
+    user: scott
+    password: ${ORACLE_LEGACY_PASSWORD}
+    options:
+      sid: ORCL
+
+# 风险审查规则
+risk_rules:
+  # 高风险规则
+  high_risk:
+    - name: block_drop_table
+      pattern: 'DROP\s+TABLE'
+      message: 'DROP TABLE 操作被禁止'
+      enabled: true
+
+    - name: block_truncate
+      pattern: 'TRUNCATE\s+TABLE'
+      message: 'TRUNCATE 操作被禁止'
+      enabled: true
+
+    - name: block_delete_without_where
+      pattern: 'DELETE\s+FROM\s+\S+\s*$'
+      message: 'DELETE 操作缺少 WHERE 条件'
+      enabled: true
+
+    - name: block_system_tables
+      pattern: '(SYS\.|SYSTEM\.|DBA_|V\$|GV\$)'
+      message: '禁止访问系统表'
+      description: '禁止访问 Oracle 系统表'
+      enabled: true
+
+  # 中风险规则
+  medium_risk:
+    - name: warn_select_star
+      pattern: 'SELECT\s+\*\s+FROM'
+      message: '建议避免使用 SELECT *，请指定具体列'
+      enabled: true
+
+    - name: warn_missing_limit
+      pattern: 'SELECT\s+.*(?<!ROWNUM\s*<=\s*\d+)$'
+      message: '建议使用 ROWNUM 限制结果集'
+      description: 'Oracle 使用 ROWNUM 而不是 LIMIT'
+      enabled: true
+
+  # 白名单
+  whitelist:
+    - name: oracle_health_check
+      pattern: 'SELECT\s+1\s+FROM\s+DUAL'
+      message: 'Oracle 健康检查'
+      enabled: true
+
+    - name: oracle_version
+      pattern: 'SELECT\s+\*\s+FROM\s+V\$VERSION'
+      message: 'Oracle 版本查询'
+      enabled: true
+
+# MCP Server 配置
+mcp_server:
+  name: safesql-oracle
+  version: "1.0.0"
+  description: "SafeSQL MCP Server - Oracle 数据库支持"
+
+# EXPLAIN 配置
+explain:
+  enabled: true
+  analyze: true
+  format: TEXT
+
+# 日志配置
+logging:
+  level: INFO
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: null

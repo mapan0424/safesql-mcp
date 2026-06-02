@@ -5,6 +5,7 @@
 from .base import DatabaseBase, DatabaseConfig, QueryResult
 from .postgresql import PostgreSQLDatabase
 from .mysql import MySQLDatabase
+from .oracle import OracleDatabase
 
 __all__ = [
     "DatabaseBase",
@@ -12,4 +13,5 @@ __all__ = [
     "QueryResult",
     "PostgreSQLDatabase",
     "MySQLDatabase",
+    "OracleDatabase",
 ]

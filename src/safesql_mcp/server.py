@@ -15,6 +15,7 @@ from .core.rules import DefaultRiskRules
 from .databases.base import DatabaseBase
 from .databases.postgresql import PostgreSQLDatabase
 from .databases.mysql import MySQLDatabase
+from .databases.oracle import OracleDatabase
 from .mcp.tools import SafeSQLTools
 from .mcp.resources import SafeSQLResources
 from .utils.config import Config, load_config, create_default_config
@@ -65,6 +66,8 @@ class SafeSQLServer:
                     db = PostgreSQLDatabase(db_config)
                 elif db_config.type == "mysql":
                     db = MySQLDatabase(db_config)
+                elif db_config.type == "oracle":
+                    db = OracleDatabase(db_config)
                 else:
                     self.logger.warning(f"Unsupported database type: {db_config.type}")
                     continue

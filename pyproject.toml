@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "safesql-mcp"
-version = "1.0.0"
+version = "1.1.0"
 description = "SafeSQL MCP: AI Agent safe database access MCP Server + SQL risk audit tool"
 readme = "README.md"
 license = {text = "MIT"}
@@ -31,7 +31,7 @@ classifiers = [
     "Topic :: Security",
     "Framework :: AsyncIO",
 ]
-keywords = ["mcp", "sql", "database", "ai-agent", "security", "postgresql", "mysql", "model-context-protocol"]
+keywords = ["mcp", "sql", "database", "ai-agent", "security", "postgresql", "mysql", "oracle", "model-context-protocol"]
 
 dependencies = [
     "mcp>=1.0.0",
@@ -41,6 +41,7 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "psycopg2-binary>=2.9.0",
     "pymysql>=1.1.0",
+    "oracledb>=2.0.0",
     "click>=8.0.0",
     "rich>=13.0.0",
     "uvicorn>=0.20.0",
@@ -56,6 +57,9 @@ dev = [
     "mypy>=1.0.0",
     "flake8>=6.0.0",
     "pre-commit>=3.0.0",
+]
+oracle = [
+    "oracledb>=2.0.0",
 ]
 
 [project.urls]

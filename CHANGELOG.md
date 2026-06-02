@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2026-06-02
+
+### Added
+- 🐘 **Oracle Database Support** - Full Oracle database support with EXPLAIN plan analysis
+- Oracle connection via service_name, sid, or full DSN
+- Oracle-specific SQL patterns and risk rules
+- Example configuration for Oracle environments
+
+### Changed
+- Updated dependencies to include `oracledb>=2.0.0`
+- Updated documentation with Oracle configuration examples
+
 ## [1.0.0] - 2026-06-02
 
 ### Added

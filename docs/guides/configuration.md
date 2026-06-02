@@ -36,6 +36,19 @@ databases:
     options:
       charset: utf8mb4
       connect_timeout: 10
+  
+  # Oracle 示例
+  oracle_prod:
+    type: oracle
+    host: localhost
+    port: 1521
+    database: ORCL
+    user: readonly_user
+    password: ${ORACLE_PASSWORD}
+    options:
+      service_name: ORCL  # 使用 service_name
+      # sid: ORCL         # 或使用 sid
+      # dsn: "localhost:1521/ORCL"  # 或使用完整 DSN
 
 # 风险审查规则
 risk_rules:
@@ -141,6 +154,22 @@ options:
   connect_timeout: 10       # 连接超时（秒）
   autocommit: true          # 自动提交
 ```
+
+**Oracle 选项**：
+
+```yaml
+options:
+  service_name: ORCL        # 服务名（推荐）
+  # sid: ORCL               # 或使用 SID
+  # dsn: "host:port/service" # 或使用完整 DSN
+  mode: thin                # thin 或 thick 模式
+  stmtcachesize: 30         # 语句缓存大小
+```
+
+**Oracle 连接方式**：
+- **service_name**：推荐方式，使用服务名连接
+- **sid**：使用 SID 连接（旧版本）
+- **dsn**：使用完整 DSN 字符串
 
 ### 风险规则 (`risk_rules`)
 

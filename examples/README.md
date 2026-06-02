@@ -11,6 +11,7 @@
 | [safesql.yaml](safesql.yaml) | 基础配置 | 快速开始 |
 | [safesql-development.yaml](safesql-development.yaml) | 开发环境配置 | 本地开发 |
 | [safesql-production.yaml](safesql-production.yaml) | 生产环境配置 | 生产部署 |
+| [safesql-oracle.yaml](safesql-oracle.yaml) | Oracle 数据库配置 | Oracle 环境 |
 
 ### SQL 示例
 
