@@ -119,14 +119,14 @@ class DefaultRiskRules:
             ),
             RiskRule(
                 name="delete_without_where",
-                pattern=r"DELETE\s+FROM\s+[^\s]+\s*$",
+                pattern=r"DELETE\s+FROM\s+\S+\s*$",
                 level=RiskLevel.HIGH,
                 message="DELETE 操作缺少 WHERE 条件",
                 description="无条件删除将影响所有行"
             ),
             RiskRule(
                 name="update_without_where",
-                pattern=r"UPDATE\s+[^\s]+\s+SET\s+.*(?<!\s+WHERE\s+.+)$",
+                pattern=r"UPDATE\s+\S+\s+SET\s+(?!.*WHERE\s+).*$",
                 level=RiskLevel.HIGH,
                 message="UPDATE 操作缺少 WHERE 条件",
                 description="无条件更新将影响所有行"

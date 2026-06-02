@@ -8,24 +8,30 @@ version = "1.0.0"
 description = "SafeSQL MCP: AI Agent safe database access MCP Server + SQL risk audit tool"
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [
+    {name = "Panda", email = "315337987@qq.com"},
+]
+maintainers = [
     {name = "Panda", email = "315337987@qq.com"},
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Database",
+    "Topic :: Database :: Front-Ends",
     "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Security",
+    "Framework :: AsyncIO",
 ]
-keywords = ["mcp", "sql", "database", "ai-agent", "security", "postgresql", "mysql"]
+keywords = ["mcp", "sql", "database", "ai-agent", "security", "postgresql", "mysql", "model-context-protocol"]
 
 dependencies = [
     "mcp>=1.0.0",
@@ -57,6 +63,7 @@ Homepage = "https://github.com/mapan0424/safesql-mcp"
 Documentation = "https://github.com/mapan0424/safesql-mcp/wiki"
 Repository = "https://github.com/mapan0424/safesql-mcp"
 Issues = "https://github.com/mapan0424/safesql-mcp/issues"
+Changelog = "https://github.com/mapan0424/safesql-mcp/blob/main/CHANGELOG.md"
 
 [project.scripts]
 safesql-mcp = "safesql_mcp.server:main"
@@ -65,16 +72,24 @@ safesql-review = "safesql_mcp.cli:review"
 [tool.hatch.build.targets.wheel]
 packages = ["src/safesql_mcp"]
 
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/safesql_mcp",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+]
+
 [tool.black]
 line-length = 88
-target-version = ["py39"]
+target-version = ["py310"]
 
 [tool.isort]
 profile = "black"
 multi_line_output = 3
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true

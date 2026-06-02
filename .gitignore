@@ -154,10 +154,6 @@ safesql.yaml
 *.sqlite
 *.sqlite3
 
-# Test files
-test_*.py
-*_test.py
-
 # Documentation build
 docs/build/
 docs/site/
