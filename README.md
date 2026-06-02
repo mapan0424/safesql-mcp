@@ -3,7 +3,7 @@
 **AI Agent 安全数据库访问 MCP Server + SQL 风险审查工具**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![MCP Compatible](https://img.shields.io/badge/MCP-compatible-brightgreen.svg)](https://modelcontextprotocol.io/)
 
 SafeSQL MCP 是一个 Model Context Protocol (MCP) Server，为 AI Agent 提供安全的数据库访问能力。它通过 SQL 风险审查引擎，在 AI 生成的 SQL 执行前进行安全评估，防止高风险操作，确保数据库安全。
@@ -371,6 +371,19 @@ mypy src/
 - 全异步 I/O 操作
 - 并发查询支持
 - 非阻塞风险审查
+
+## 📚 文档
+
+完整文档请访问 [docs](docs/) 目录：
+
+- **[快速开始指南](docs/guides/quickstart.md)** - 5 分钟上手
+- **[安装指南](docs/guides/installation.md)** - 详细安装步骤
+- **[配置文件指南](docs/guides/configuration.md)** - 配置详解
+- **[基础使用示例](docs/examples/basic-examples.md)** - 常见场景
+- **[最佳实践](docs/examples/best-practices.md)** - 生产环境建议
+- **[MCP 工具 API](docs/api/mcp-tools.md)** - 工具详细说明
+- **[CLI 命令参考](docs/api/cli-reference.md)** - 命令行工具
+- **[系统架构](docs/architecture.md)** - 架构设计
 
 ## 🤝 贡献指南
 

@@ -1,0 +1,59 @@
+# SafeSQL MCP 开发环境配置示例
+
+# 数据库连接配置
+databases:
+  # 本地 PostgreSQL
+  local_postgres:
+    type: postgresql
+    host: localhost
+    port: 5432
+    database: devdb
+    user: postgres
+    password: postgres
+
+  # 本地 MySQL
+  local_mysql:
+    type: mysql
+    host: localhost
+    port: 3306
+    database: devdb
+    user: root
+    password: root
+
+# 风险审查规则（宽松模式）
+risk_rules:
+  # 只阻止最危险的操作
+  high_risk:
+    - name: block_drop_database
+      pattern: 'DROP\s+DATABASE'
+      message: '禁止删除数据库'
+      enabled: true
+
+    - name: block_truncate
+      pattern: 'TRUNCATE\s+TABLE'
+      message: 'TRUNCATE 操作被禁止'
+      enabled: true
+
+  # 允许大部分操作
+  medium_risk: []
+  low_risk: []
+  whitelist: []
+
+# MCP Server 配置
+mcp_server:
+  name: safesql-dev
+  version: "1.0.0-dev"
+  description: "SafeSQL MCP Server - 开发环境"
+
+# EXPLAIN 配置
+explain:
+  enabled: true
+  analyze: true
+  buffers: true
+  format: TEXT
+
+# 日志配置（详细）
+logging:
+  level: DEBUG
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: null  # 输出到控制台

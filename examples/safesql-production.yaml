@@ -1,0 +1,164 @@
+# SafeSQL MCP 生产环境配置示例
+
+# 数据库连接配置
+databases:
+  # 主数据库（只读）
+  main_db:
+    type: postgresql
+    host: ${DB_HOST}
+    port: 5432
+    database: ${DB_NAME}
+    user: readonly_user
+    password: ${DB_PASSWORD}
+    options:
+      sslmode: require
+      connect_timeout: 30
+      application_name: safesql-mcp
+
+  # 分析数据库
+  analytics_db:
+    type: mysql
+    host: ${ANALYTICS_HOST}
+    port: 3306
+    database: analytics
+    user: readonly_user
+    password: ${ANALYTICS_PASSWORD}
+    options:
+      charset: utf8mb4
+      connect_timeout: 30
+
+# 风险审查规则
+risk_rules:
+  # 高风险规则（自动拦截）
+  high_risk:
+    - name: block_drop_operations
+      pattern: 'DROP\s+(TABLE|DATABASE|INDEX|VIEW)'
+      message: 'DROP 操作被禁止'
+      description: '删除数据库对象操作极其危险'
+      enabled: true
+
+    - name: block_truncate
+      pattern: 'TRUNCATE\s+TABLE'
+      message: 'TRUNCATE 操作被禁止'
+      description: '清空表操作不可恢复'
+      enabled: true
+
+    - name: block_delete_without_where
+      pattern: 'DELETE\s+FROM\s+\S+\s*$'
+      message: 'DELETE 操作缺少 WHERE 条件'
+      description: '无条件删除将影响所有行'
+      enabled: true
+
+    - name: block_update_without_where
+      pattern: 'UPDATE\s+\S+\s+SET\s+(?!.*WHERE\s+).*$'
+      message: 'UPDATE 操作缺少 WHERE 条件'
+      description: '无条件更新将影响所有行'
+      enabled: true
+
+    - name: block_permission_changes
+      pattern: '(GRANT|REVOKE)\s+'
+      message: '权限操作被禁止'
+      description: '权限修改需要管理员授权'
+      enabled: true
+
+    - name: block_system_tables
+      pattern: '(information_schema|pg_catalog|mysql\.|sys\.)'
+      message: '禁止访问系统表'
+      description: '系统表包含敏感元数据'
+      enabled: true
+
+  # 中风险规则（警告执行）
+  medium_risk:
+    - name: warn_select_star
+      pattern: 'SELECT\s+\*\s+FROM'
+      message: '建议避免使用 SELECT *，请指定具体列'
+      description: 'SELECT * 会返回所有列，可能影响性能'
+      enabled: true
+
+    - name: warn_like_wildcard
+      pattern: "LIKE\\s+'%"
+      message: '前缀通配符可能导致全表扫描'
+      description: '前缀通配符无法使用索引'
+      enabled: true
+
+    - name: warn_missing_limit
+      pattern: 'SELECT\s+.*(?<!LIMIT\s+\d+)$'
+      message: '建议添加 LIMIT 限制结果集大小'
+      description: '防止返回过多数据'
+      enabled: true
+
+    - name: warn_multiple_joins
+      pattern: '(JOIN\s+.*\s+ON.*){3,}'
+      message: '多表 JOIN 可能影响查询性能'
+      description: '复杂的多表连接需要优化'
+      enabled: true
+
+  # 低风险规则（直接执行）
+  low_risk:
+    - name: safe_select
+      pattern: 'SELECT\s+.*\s+FROM\s+.*\s+WHERE'
+      message: '安全查询'
+      description: '带 WHERE 条件的 SELECT 查询'
+      enabled: true
+
+    - name: safe_insert
+      pattern: 'INSERT\s+INTO\s+.*\s+\([^)]+\)\s+VALUES'
+      message: '安全插入'
+      description: '指定列名的 INSERT 操作'
+      enabled: true
+
+  # 白名单（忽略检查）
+  whitelist:
+    - name: health_check
+      pattern: 'SELECT\s+1'
+      message: '健康检查查询'
+      description: '数据库健康检查查询'
+      enabled: true
+
+    - name: version_check
+      pattern: 'SELECT\s+version\(\)'
+      message: '版本查询'
+      description: '数据库版本查询'
+      enabled: true
+
+    - name: current_time
+      pattern: 'SELECT\s+(NOW\(\)|CURRENT_TIMESTAMP|CURRENT_DATE)'
+      message: '时间查询'
+      description: '获取当前时间'
+      enabled: true
+
+# MCP Server 配置
+mcp_server:
+  name: safesql
+  version: "1.0.0"
+  description: "SafeSQL MCP Server - 安全数据库访问"
+
+# EXPLAIN 配置
+explain:
+  enabled: true
+  analyze: true
+  buffers: true
+  format: TEXT
+
+# 日志配置
+logging:
+  level: INFO
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: /var/log/safesql/safesql.log
+
+# 性能配置
+performance:
+  # 查询缓存
+  cache:
+    enabled: true
+    max_size: 1000
+    ttl: 300  # 5 分钟
+
+  # 连接池
+  connection_pool:
+    min_size: 2
+    max_size: 10
+    timeout: 30
+
+  # 查询超时
+  query_timeout: 60  # 秒
