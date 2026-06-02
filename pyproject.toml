@@ -71,7 +71,7 @@ Changelog = "https://github.com/mapan0424/safesql-mcp/blob/main/CHANGELOG.md"
 
 [project.scripts]
 safesql-mcp = "safesql_mcp.server:main"
-safesql-review = "safesql_mcp.cli:review"
+safesql-review = "safesql_mcp.cli:cli"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/safesql_mcp"]

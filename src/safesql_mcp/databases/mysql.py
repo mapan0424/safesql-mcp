@@ -215,12 +215,12 @@ class MySQLDatabase(DatabaseBase):
         
         try:
             self._cursor.execute("""
-                SELECT table_name
+                SELECT TABLE_NAME
                 FROM information_schema.tables
                 WHERE table_schema = DATABASE()
-                ORDER BY table_name
+                ORDER BY TABLE_NAME
             """)
-            return [row["table_name"] for row in self._cursor.fetchall()]
+            return [row["TABLE_NAME"] for row in self._cursor.fetchall()]
             
         except pymysql.Error as e:
             return []
@@ -241,7 +241,7 @@ class MySQLDatabase(DatabaseBase):
         try:
             # 获取列信息
             self._cursor.execute("""
-                SELECT column_name, data_type, is_nullable, column_default, column_key
+                SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_DEFAULT, COLUMN_KEY
                 FROM information_schema.columns
                 WHERE table_schema = DATABASE() AND table_name = %s
                 ORDER BY ordinal_position
@@ -250,32 +250,32 @@ class MySQLDatabase(DatabaseBase):
             columns = []
             for row in self._cursor.fetchall():
                 columns.append({
-                    "name": row["column_name"],
-                    "type": row["data_type"],
-                    "nullable": row["is_nullable"] == "YES",
-                    "default": row["column_default"],
-                    "key": row["column_key"]
+                    "name": row["COLUMN_NAME"],
+                    "type": row["DATA_TYPE"],
+                    "nullable": row["IS_NULLABLE"] == "YES",
+                    "default": row["COLUMN_DEFAULT"],
+                    "key": row["COLUMN_KEY"]
                 })
             
             # 获取索引信息
             self._cursor.execute("""
-                SELECT index_name, group_concat(column_name order by seq_in_index) as columns, non_unique
+                SELECT INDEX_NAME, group_concat(COLUMN_NAME order by SEQ_IN_INDEX) as columns, NON_UNIQUE
                 FROM information_schema.statistics
                 WHERE table_schema = DATABASE() AND table_name = %s
-                GROUP BY index_name, non_unique
+                GROUP BY INDEX_NAME, NON_UNIQUE
             """, (table_name,))
             
             indexes = []
             for row in self._cursor.fetchall():
                 indexes.append({
-                    "name": row["index_name"],
+                    "name": row["INDEX_NAME"],
                     "columns": row["columns"].split(","),
-                    "unique": row["non_unique"] == 0
+                    "unique": row["NON_UNIQUE"] == 0
                 })
             
             # 获取约束信息
             self._cursor.execute("""
-                SELECT constraint_name, constraint_type
+                SELECT CONSTRAINT_NAME, CONSTRAINT_TYPE
                 FROM information_schema.table_constraints
                 WHERE table_schema = DATABASE() AND table_name = %s
             """, (table_name,))
@@ -283,8 +283,8 @@ class MySQLDatabase(DatabaseBase):
             constraints = []
             for row in self._cursor.fetchall():
                 constraints.append({
-                    "name": row["constraint_name"],
-                    "type": row["constraint_type"]
+                    "name": row["CONSTRAINT_NAME"],
+                    "type": row["CONSTRAINT_TYPE"]
                 })
             
             return {
