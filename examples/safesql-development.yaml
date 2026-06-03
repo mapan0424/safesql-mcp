@@ -10,6 +10,18 @@ databases:
     database: devdb
     user: postgres
     password: postgres
+    options:
+      # 使用异步驱动（性能更好）
+      async: true
+      # 连接池配置（开发环境使用小池）
+      pool:
+        min_size: 1
+        max_size: 3
+        max_idle_time: 60  # 1分钟
+        max_lifetime: 300  # 5分钟
+        timeout: 10
+        retry_attempts: 2
+        retry_delay: 0.5
 
   # 本地 MySQL
   local_mysql:
@@ -19,6 +31,16 @@ databases:
     database: devdb
     user: root
     password: root
+    options:
+      # 连接池配置
+      pool:
+        min_size: 1
+        max_size: 3
+        max_idle_time: 60
+        max_lifetime: 300
+        timeout: 10
+        retry_attempts: 2
+        retry_delay: 0.5
 
 # 风险审查规则（宽松模式）
 risk_rules:

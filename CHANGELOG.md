@@ -2,6 +2,73 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-06-03
+
+### Added
+- 🚀 **Connection Pool Optimization** - Advanced connection pool with configurable parameters
+  - Min/max pool size configuration
+  - Connection idle timeout and max lifetime
+  - Automatic connection validation and retry
+  - Pool statistics and monitoring
+- ⚡ **Async Database Drivers** - True async database support for better performance
+  - `asyncpg` for PostgreSQL async operations
+  - `aiomysql` for MySQL async operations
+  - Async connection pool management
+  - Non-blocking database operations
+- 💾 **Query Caching** - Intelligent query result caching
+  - TTL-based cache expiration
+  - Configurable cache size
+  - Cache hit/miss statistics
+  - Automatic cache invalidation for write operations
+- 🛡️ **SQL Injection Detection** - Advanced SQL injection pattern detection
+  - 14+ injection pattern categories
+  - Risk level assessment (None/Low/Medium/High/Critical)
+  - Configurable detection rules
+  - Integration with risk assessment engine
+- 🔧 **Enhanced Rule Engine** - More powerful and flexible rule system
+  - Rule priority and categories
+  - Rule groups and tags
+  - Dynamic rule support
+  - Rule conflict detection
+  - Hot rule updates
+- 🚨 **Comprehensive Error Handling** - Structured error handling system
+  - Custom error types with error codes
+  - Error context and details
+  - Error handler registration
+  - Decorator-based error handling
+- 📊 **Structured Logging** - Enhanced logging capabilities
+  - JSON-formatted log output
+  - Structured log data with extra fields
+  - Query execution logging
+  - Connection event logging
+  - Risk assessment logging
+
+### Changed
+- 🔄 **Database Driver Architecture** - Refactored database drivers for better extensibility
+  - Separate sync and async driver implementations
+  - Unified driver interface
+  - Driver selection via configuration
+- 📈 **Performance Monitoring** - Added performance metrics and statistics
+  - Cache hit rate monitoring
+  - Connection pool utilization
+  - Query execution time tracking
+  - Risk rule match statistics
+- 📝 **Configuration Enhancement** - Extended configuration options
+  - Performance tuning section
+  - Cache configuration
+  - Async driver configuration
+  - Connection pool parameters
+
+### Fixed
+- 🐛 **Connection Management** - Improved connection lifecycle management
+  - Proper connection cleanup on errors
+  - Connection leak prevention
+  - Graceful shutdown handling
+- 🔒 **Security Improvements** - Enhanced security measures
+  - Better input validation
+  - Parameterized query enforcement
+  - Injection pattern detection
+
 ## [1.1.0] - 2026-06-02
 
 ### Added

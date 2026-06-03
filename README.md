@@ -15,6 +15,9 @@
 - 🔌 **MCP Server** - Standard MCP protocol compatible with Claude, Cursor, Codex, and other AI tools
 - 🚀 **CI/CD Ready** - GitHub Action for automated SQL risk review in PRs
 - 🔧 **Extensible** - Custom risk rules, whitelist support, and plugin architecture
+- ⚡ **High Performance** - Connection pooling, async drivers, and query caching
+- 🛡️ **SQL Injection Protection** - Advanced injection pattern detection and prevention
+- 📊 **Monitoring** - Structured logging, performance metrics, and statistics
 
 **Use Cases:**
 - Safe database access for AI coding assistants (Claude Desktop, Cursor, Codex CLI)
@@ -32,12 +35,14 @@
 - **三级风险评估**：高风险（拦截）、中风险（警告）、低风险（执行）
 - **智能规则引擎**：基于 SQL 语法分析和模式匹配
 - **可扩展规则**：支持自定义风险规则和白名单
+- **SQL 注入检测**：14+ 注入模式检测，风险等级评估
 
 ### 🗄️ 多数据库支持
 - **PostgreSQL**：完整支持，包括 EXPLAIN 分析
 - **MySQL**：完整支持，包括 EXPLAIN 分析
 - **Oracle**：完整支持，包括 EXPLAIN 分析
 - **国产数据库**：预留扩展接口（虚谷、达梦、金仓等）
+- **异步驱动**：支持 asyncpg 和 aiomysql 异步驱动
 
 ### 🔌 MCP Server 集成
 - **标准 MCP 协议**：兼容所有 MCP 客户端
@@ -53,6 +58,21 @@
 - **GitHub Action**：PR 中自动检测高风险 SQL
 - **评论提醒**：自动在 PR 中添加风险评论
 - **状态检查**：阻止包含高风险 SQL 的 PR 合并
+
+### ⚡ 性能优化
+- **连接池管理**：可配置的连接池参数，自动连接回收
+- **查询缓存**：TTL 缓存，自动失效，缓存统计
+- **异步支持**：真正的异步数据库驱动，非阻塞操作
+
+### 🛡️ 安全增强
+- **SQL 注入防护**：14+ 注入模式检测，实时风险评估
+- **参数化查询**：强制使用参数化查询，防止注入攻击
+- **权限控制**：最小权限原则，只读访问强制
+
+### 📊 监控与日志
+- **结构化日志**：JSON 格式日志，便于日志分析
+- **性能指标**：查询执行时间，缓存命中率，连接池使用率
+- **错误追踪**：详细的错误信息和堆栈跟踪
 
 ## 🚀 快速开始
 
@@ -82,6 +102,18 @@ databases:
     database: mydb
     user: readonly_user
     password: ${POSTGRES_PASSWORD}
+    options:
+      # 使用异步驱动（性能更好）
+      async: true
+      # 连接池配置
+      pool:
+        min_size: 2
+        max_size: 10
+        max_idle_time: 300  # 5分钟
+        max_lifetime: 3600  # 1小时
+        timeout: 30  # 连接超时
+        retry_attempts: 3
+        retry_delay: 1.0
     
   mysql_analytics:
     type: mysql
@@ -90,6 +122,16 @@ databases:
     database: analytics
     user: readonly_user
     password: ${MYSQL_PASSWORD}
+    options:
+      # 连接池配置
+      pool:
+        min_size: 1
+        max_size: 5
+        max_idle_time: 300
+        max_lifetime: 3600
+        timeout: 30
+        retry_attempts: 3
+        retry_delay: 1.0
 
 # 风险审查规则
 risk_rules:

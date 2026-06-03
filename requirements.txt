@@ -13,9 +13,16 @@ pydantic>=2.0.0
 pyyaml>=6.0
 python-dotenv>=1.0.0
 
-# 数据库连接
+# 数据库连接（同步驱动，用于兼容性）
 psycopg2-binary>=2.9.0
 pymysql>=1.1.0
+
+# 数据库连接（异步驱动，用于性能）
+asyncpg>=0.29.0
+aiomysql>=0.2.0
+
+# Oracle 数据库
+oracledb>=2.0.0
 
 # CLI 工具
 click>=8.0.0
@@ -23,6 +30,9 @@ rich>=13.0.0
 
 # HTTP 服务器
 uvicorn>=0.20.0
+
+# 缓存
+cachetools>=5.3.0
 
 # 开发依赖（可选）
 # pytest>=7.0.0
