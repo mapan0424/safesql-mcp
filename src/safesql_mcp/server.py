@@ -13,6 +13,7 @@ from mcp.server.stdio import stdio_server
 from .core.engine import RiskEngine
 from .core.rules import DefaultRiskRules
 from .databases.base import DatabaseBase
+from .databases.pool import PoolConfig
 from .databases.postgresql import PostgreSQLDatabase
 from .databases.mysql import MySQLDatabase
 from .databases.oracle import OracleDatabase
@@ -53,7 +54,8 @@ class SafeSQLServer:
         self.server = Server(config.mcp_server.get("name", "safesql"))
         
         # 初始化工具和资源
-        self.tools = SafeSQLTools(self.server, self.risk_engine, self.databases)
+        cache_config = self._get_cache_config()
+        self.tools = SafeSQLTools(self.server, self.risk_engine, self.databases, cache_config)
         self.resources = SafeSQLResources(self.server, self.databases)
         
         self.logger.info(f"SafeSQL MCP Server initialized with {len(self.databases)} databases")
@@ -62,12 +64,26 @@ class SafeSQLServer:
         """初始化数据库连接"""
         for name, db_config in self.config.databases.items():
             try:
+                # 获取连接池配置
+                pool_config = self._get_pool_config(db_config)
+                
+                # 检查是否使用异步驱动
+                use_async = db_config.options.get("async", False) if db_config.options else False
+                
                 if db_config.type == "postgresql":
-                    db = PostgreSQLDatabase(db_config)
+                    if use_async:
+                        from .databases.async_postgresql import AsyncPostgreSQLDatabase
+                        db = AsyncPostgreSQLDatabase(db_config, pool_config)
+                    else:
+                        db = PostgreSQLDatabase(db_config, pool_config)
                 elif db_config.type == "mysql":
-                    db = MySQLDatabase(db_config)
+                    if use_async:
+                        from .databases.async_mysql import AsyncMySQLDatabase
+                        db = AsyncMySQLDatabase(db_config, pool_config)
+                    else:
+                        db = MySQLDatabase(db_config, pool_config)
                 elif db_config.type == "oracle":
-                    db = OracleDatabase(db_config)
+                    db = OracleDatabase(db_config, pool_config)
                 else:
                     self.logger.warning(f"Unsupported database type: {db_config.type}")
                     continue
@@ -77,6 +93,36 @@ class SafeSQLServer:
                 
             except Exception as e:
                 self.logger.error(f"Failed to initialize database '{name}': {e}")
+    
+    def _get_pool_config(self, db_config) -> Optional[PoolConfig]:
+        """获取连接池配置"""
+        if not hasattr(db_config, 'options') or not db_config.options:
+            return None
+        
+        pool_options = db_config.options.get("pool")
+        if not pool_options:
+            return None
+        
+        return PoolConfig(
+            min_size=pool_options.get("min_size", 1),
+            max_size=pool_options.get("max_size", 10),
+            max_idle_time=pool_options.get("max_idle_time", 300.0),
+            max_lifetime=pool_options.get("max_lifetime", 3600.0),
+            timeout=pool_options.get("timeout", 30.0),
+            retry_attempts=pool_options.get("retry_attempts", 3),
+            retry_delay=pool_options.get("retry_delay", 1.0)
+        )
+    
+    def _get_cache_config(self) -> CacheConfig:
+        """获取缓存配置"""
+        cache_config = self.config.performance.get("cache", {}) if hasattr(self.config, 'performance') else {}
+        
+        return CacheConfig(
+            enabled=cache_config.get("enabled", True),
+            max_size=cache_config.get("max_size", 1000),
+            ttl=cache_config.get("ttl", 300),
+            key_prefix="safesql"
+        )
     
     async def run(self) -> None:
         """运行 MCP Server"""

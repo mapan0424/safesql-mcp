@@ -1,5 +1,5 @@
 """
-PostgreSQL 数据库连接器（带连接池支持）
+PostgreSQL 异步数据库连接器（使用 asyncpg）
 """
 
 import asyncio
@@ -7,73 +7,72 @@ import time
 from typing import Any, Dict, List, Optional, Tuple
 from contextlib import asynccontextmanager
 
-import psycopg2
-import psycopg2.extras
-from psycopg2 import sql
+import asyncpg
 
 from .base import DatabaseBase, DatabaseConfig, QueryResult
 from .pool import ConnectionPool, PoolConfig
 
 
-class PostgreSQLConnectionPool(ConnectionPool):
-    """PostgreSQL 连接池"""
+class AsyncPostgreSQLConnectionPool(ConnectionPool):
+    """PostgreSQL 异步连接池"""
     
     def __init__(self, config: DatabaseConfig, pool_config: Optional[PoolConfig] = None):
         super().__init__(pool_config or PoolConfig())
         self.db_config = config
+        self._async_pool: Optional[asyncpg.Pool] = None
     
     async def _create_connection(self) -> Any:
-        """创建 PostgreSQL 连接"""
-        conn_params = {
-            "host": self.db_config.host,
-            "port": self.db_config.port,
-            "database": self.db_config.database,
-            "user": self.db_config.user,
-            "password": self.db_config.password,
-        }
+        """创建 PostgreSQL 异步连接"""
+        if self._async_pool is None:
+            # 创建 asyncpg 连接池
+            self._async_pool = await asyncpg.create_pool(
+                host=self.db_config.host,
+                port=self.db_config.port,
+                database=self.db_config.database,
+                user=self.db_config.user,
+                password=self.db_config.password,
+                min_size=self.config.min_size,
+                max_size=self.config.max_size,
+                command_timeout=self.config.timeout,
+                **(self.db_config.options or {})
+            )
         
-        if self.db_config.options:
-            conn_params.update(self.db_config.options)
-        
-        # 在异步上下文中运行同步操作
-        loop = asyncio.get_event_loop()
-        conn = await loop.run_in_executor(None, lambda: psycopg2.connect(**conn_params))
-        conn.autocommit = True
-        
-        return conn
+        # 从池中获取连接
+        return await self._async_pool.acquire()
     
     async def _close_connection(self, conn: Any) -> None:
-        """关闭 PostgreSQL 连接"""
-        try:
-            conn.close()
-        except Exception:
-            pass
+        """关闭 PostgreSQL 异步连接"""
+        if self._async_pool:
+            await self._async_pool.release(conn)
     
     async def _validate_connection(self, conn: Any) -> bool:
-        """验证 PostgreSQL 连接"""
+        """验证 PostgreSQL 异步连接"""
         try:
-            cursor = conn.cursor()
-            cursor.execute("SELECT 1")
-            result = cursor.fetchone()
-            cursor.close()
-            return result[0] == 1
+            result = await conn.fetchval("SELECT 1")
+            return result == 1
         except Exception:
             return False
+    
+    async def close(self) -> None:
+        """关闭连接池"""
+        if self._async_pool:
+            await self._async_pool.close()
+            self._async_pool = None
 
 
-class PostgreSQLDatabase(DatabaseBase):
-    """PostgreSQL 数据库连接器（带连接池）"""
+class AsyncPostgreSQLDatabase(DatabaseBase):
+    """PostgreSQL 异步数据库连接器"""
     
     def __init__(self, config: DatabaseConfig, pool_config: Optional[PoolConfig] = None):
         """
-        初始化 PostgreSQL 连接器
+        初始化 PostgreSQL 异步连接器
         
         Args:
             config: 数据库配置
             pool_config: 连接池配置
         """
         super().__init__(config)
-        self._pool = PostgreSQLConnectionPool(config, pool_config)
+        self._pool = AsyncPostgreSQLConnectionPool(config, pool_config)
         self._is_connected = True  # 连接池模式下始终为 True
     
     async def connect(self) -> None:
@@ -100,29 +99,26 @@ class PostgreSQLDatabase(DatabaseBase):
         
         async with self._pool.connection() as conn:
             try:
-                # 创建游标
-                cursor = conn.cursor()
-                
                 # 执行查询
                 if params:
-                    cursor.execute(sql, params)
+                    # 将参数转换为 asyncpg 格式
+                    result = await conn.fetch(sql, *params)
                 else:
-                    cursor.execute(sql)
+                    result = await conn.fetch(sql)
                 
                 # 获取结果
-                if cursor.description:
+                if result:
                     # SELECT 查询
-                    columns = [desc[0] for desc in cursor.description]
-                    rows = cursor.fetchall()
+                    columns = list(result[0].keys())
+                    rows = [tuple(row.values()) for row in result]
                     row_count = len(rows)
                 else:
-                    # 非 SELECT 查询
+                    # 非 SELECT 查询或空结果
                     columns = []
                     rows = []
-                    row_count = cursor.rowcount
+                    row_count = 0
                 
                 execution_time = time.time() - start_time
-                cursor.close()
                 
                 return QueryResult(
                     columns=columns,
@@ -131,7 +127,7 @@ class PostgreSQLDatabase(DatabaseBase):
                     execution_time=execution_time
                 )
                 
-            except psycopg2.Error as e:
+            except asyncpg.PostgresError as e:
                 raise RuntimeError(f"Failed to execute SQL: {e}")
     
     async def explain(self, sql: str, analyze: bool = False) -> str:
@@ -147,8 +143,6 @@ class PostgreSQLDatabase(DatabaseBase):
         """
         async with self._pool.connection() as conn:
             try:
-                cursor = conn.cursor()
-                
                 # 构建 EXPLAIN 语句
                 explain_sql = f"EXPLAIN"
                 if analyze:
@@ -156,16 +150,13 @@ class PostgreSQLDatabase(DatabaseBase):
                 explain_sql += f" {sql}"
                 
                 # 执行 EXPLAIN
-                cursor.execute(explain_sql)
-                result = cursor.fetchall()
+                result = await conn.fetch(explain_sql)
                 
                 # 格式化结果
                 plan_lines = [row[0] for row in result]
-                cursor.close()
-                
                 return "\n".join(plan_lines)
                 
-            except psycopg2.Error as e:
+            except asyncpg.PostgresError as e:
                 return f"Failed to generate explain plan: {e}"
     
     async def get_schema(self) -> Dict[str, Any]:
@@ -177,46 +168,42 @@ class PostgreSQLDatabase(DatabaseBase):
         """
         async with self._pool.connection() as conn:
             try:
-                cursor = conn.cursor()
-                
                 # 获取所有 schema
-                cursor.execute("""
+                schemas = await conn.fetch("""
                     SELECT schema_name 
                     FROM information_schema.schemata 
                     WHERE schema_name NOT IN ('pg_catalog', 'information_schema')
                     ORDER BY schema_name
                 """)
-                schemas = [row[0] for row in cursor.fetchall()]
+                schema_list = [row[0] for row in schemas]
                 
                 # 获取所有表
-                cursor.execute("""
+                tables = await conn.fetch("""
                     SELECT table_schema, table_name, table_type
                     FROM information_schema.tables
                     WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
                     ORDER BY table_schema, table_name
                 """)
-                tables = []
-                for row in cursor.fetchall():
-                    tables.append({
+                table_list = []
+                for row in tables:
+                    table_list.append({
                         "schema": row[0],
                         "name": row[1],
                         "type": row[2]
                     })
                 
                 # 获取数据库信息
-                cursor.execute('SELECT current_database(), current_user, version()')
-                db_info = cursor.fetchone()
-                cursor.close()
+                db_info = await conn.fetchrow('SELECT current_database(), current_user, version()')
                 
                 return {
                     "database": db_info[0],
                     "user": db_info[1],
                     "version": db_info[2],
-                    "schemas": schemas,
-                    "tables": tables
+                    "schemas": schema_list,
+                    "tables": table_list
                 }
                 
-            except psycopg2.Error as e:
+            except asyncpg.PostgresError as e:
                 return {"error": f"Failed to get schema: {e}"}
     
     async def get_tables(self) -> List[str]:
@@ -228,18 +215,15 @@ class PostgreSQLDatabase(DatabaseBase):
         """
         async with self._pool.connection() as conn:
             try:
-                cursor = conn.cursor()
-                cursor.execute("""
+                result = await conn.fetch("""
                     SELECT table_name
                     FROM information_schema.tables
                     WHERE table_schema = 'public'
                     ORDER BY table_name
                 """)
-                tables = [row[0] for row in cursor.fetchall()]
-                cursor.close()
-                return tables
+                return [row[0] for row in result]
                 
-            except psycopg2.Error as e:
+            except asyncpg.PostgresError as e:
                 return []
     
     async def get_table_schema(self, table_name: str) -> Dict[str, Any]:
@@ -254,19 +238,17 @@ class PostgreSQLDatabase(DatabaseBase):
         """
         async with self._pool.connection() as conn:
             try:
-                cursor = conn.cursor()
-                
                 # 获取列信息
-                cursor.execute("""
+                columns = await conn.fetch("""
                     SELECT column_name, data_type, is_nullable, column_default
                     FROM information_schema.columns
-                    WHERE table_schema = 'public' AND table_name = %s
+                    WHERE table_schema = 'public' AND table_name = $1
                     ORDER BY ordinal_position
-                """, (table_name,))
+                """, table_name)
                 
-                columns = []
-                for row in cursor.fetchall():
-                    columns.append({
+                column_list = []
+                for row in columns:
+                    column_list.append({
                         "name": row[0],
                         "type": row[1],
                         "nullable": row[2] == "YES",
@@ -274,43 +256,41 @@ class PostgreSQLDatabase(DatabaseBase):
                     })
                 
                 # 获取索引信息
-                cursor.execute("""
+                indexes = await conn.fetch("""
                     SELECT indexname, indexdef
                     FROM pg_indexes
-                    WHERE schemaname = 'public' AND tablename = %s
-                """, (table_name,))
+                    WHERE schemaname = 'public' AND tablename = $1
+                """, table_name)
                 
-                indexes = []
-                for row in cursor.fetchall():
-                    indexes.append({
+                index_list = []
+                for row in indexes:
+                    index_list.append({
                         "name": row[0],
                         "definition": row[1]
                     })
                 
                 # 获取约束信息
-                cursor.execute("""
+                constraints = await conn.fetch("""
                     SELECT constraint_name, constraint_type
                     FROM information_schema.table_constraints
-                    WHERE table_schema = 'public' AND table_name = %s
-                """, (table_name,))
+                    WHERE table_schema = 'public' AND table_name = $1
+                """, table_name)
                 
-                constraints = []
-                for row in cursor.fetchall():
-                    constraints.append({
+                constraint_list = []
+                for row in constraints:
+                    constraint_list.append({
                         "name": row[0],
                         "type": row[1]
                     })
                 
-                cursor.close()
-                
                 return {
                     "table": table_name,
-                    "columns": columns,
-                    "indexes": indexes,
-                    "constraints": constraints
+                    "columns": column_list,
+                    "indexes": index_list,
+                    "constraints": constraint_list
                 }
                 
-            except psycopg2.Error as e:
+            except asyncpg.PostgresError as e:
                 return {"error": f"Failed to get table schema: {e}"}
     
     async def test_connection(self) -> bool:
@@ -322,11 +302,8 @@ class PostgreSQLDatabase(DatabaseBase):
         """
         try:
             async with self._pool.connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT 1")
-                result = cursor.fetchone()
-                cursor.close()
-                return result[0] == 1
+                result = await conn.fetchval("SELECT 1")
+                return result == 1
         except Exception:
             return False
     

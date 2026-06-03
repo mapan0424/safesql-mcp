@@ -12,12 +12,13 @@ from mcp.server.models import InitializationOptions
 from ..core.engine import RiskEngine
 from ..core.rules import RiskLevel
 from ..databases.base import DatabaseBase, QueryResult
+from ..utils.cache import CacheManager, CacheConfig
 
 
 class SafeSQLTools:
     """SafeSQL MCP 工具集"""
     
-    def __init__(self, server: Server, risk_engine: RiskEngine, databases: Dict[str, DatabaseBase]):
+    def __init__(self, server: Server, risk_engine: RiskEngine, databases: Dict[str, DatabaseBase], cache_config: Optional[CacheConfig] = None):
         """
         初始化工具集
         
@@ -25,10 +26,16 @@ class SafeSQLTools:
             server: MCP Server 实例
             risk_engine: 风险审查引擎
             databases: 数据库连接字典
+            cache_config: 缓存配置
         """
         self.server = server
         self.risk_engine = risk_engine
         self.databases = databases
+        
+        # 初始化缓存管理器
+        if cache_config is None:
+            cache_config = CacheConfig(enabled=False)
+        self.cache_manager = CacheManager(cache_config)
         
         # 注册工具处理器
         self._register_tools()
@@ -63,6 +70,11 @@ class SafeSQLTools:
                                 "type": "integer",
                                 "description": "查询超时时间（秒）",
                                 "default": 30
+                            },
+                            "use_cache": {
+                                "type": "boolean",
+                                "description": "是否使用缓存",
+                                "default": True
                             }
                         },
                         "required": ["database", "sql"]
@@ -139,6 +151,31 @@ class SafeSQLTools:
                         },
                         "required": ["database"]
                     }
+                ),
+                types.Tool(
+                    name="cache_stats",
+                    description="获取缓存统计信息",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {}
+                    }
+                ),
+                types.Tool(
+                    name="invalidate_cache",
+                    description="使缓存失效",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "database": {
+                                "type": "string",
+                                "description": "数据库连接名称（可选）"
+                            },
+                            "table": {
+                                "type": "string",
+                                "description": "表名（可选）"
+                            }
+                        }
+                    }
                 )
             ]
         
@@ -160,6 +197,10 @@ class SafeSQLTools:
                 return await self._handle_schema(arguments)
             elif name == "test_connection":
                 return await self._handle_test_connection(arguments)
+            elif name == "cache_stats":
+                return await self._handle_cache_stats(arguments)
+            elif name == "invalidate_cache":
+                return await self._handle_invalidate_cache(arguments)
             else:
                 raise ValueError(f"Unknown tool: {name}")
     
@@ -169,6 +210,7 @@ class SafeSQLTools:
         sql = arguments.get("sql")
         explain = arguments.get("explain", False)
         timeout = arguments.get("timeout", 30)
+        use_cache = arguments.get("use_cache", True)
         
         # 验证参数
         if not database_name or not sql:
@@ -202,6 +244,19 @@ class SafeSQLTools:
                 text=self._format_result(result)
             )]
         
+        # 检查缓存
+        cached_result = None
+        if use_cache and self.cache_manager.cache.is_cacheable(sql):
+            cached_result = self.cache_manager.cache.get(sql, database=database_name)
+            if cached_result:
+                result["query_result"] = cached_result
+                result["from_cache"] = True
+                result["message"] = f"✅ 查询执行成功（从缓存获取）"
+                return [types.TextContent(
+                    type="text",
+                    text=self._format_result(result)
+                )]
+        
         # 执行查询
         try:
             db = self.databases[database_name]
@@ -220,6 +275,10 @@ class SafeSQLTools:
             result["query_result"] = query_result.to_dict()
             if explain_plan:
                 result["explain_plan"] = explain_plan
+            
+            # 缓存结果
+            if use_cache and self.cache_manager.cache.is_cacheable(sql):
+                self.cache_manager.cache.set(sql, query_result.to_dict(), database=database_name)
             
             # 生成消息
             if assessment.requires_warning:
@@ -408,6 +467,43 @@ class SafeSQLTools:
                 type="text",
                 text=f"Error testing connection: {str(e)}"
             )]
+    
+    async def _handle_cache_stats(self, arguments: Dict[str, Any]) -> List[types.TextContent]:
+        """处理缓存统计工具调用"""
+        stats = self.cache_manager.get_stats()
+        
+        result = {
+            "cache_stats": stats
+        }
+        
+        return [types.TextContent(
+            type="text",
+            text=self._format_result(result)
+        )]
+    
+    async def _handle_invalidate_cache(self, arguments: Dict[str, Any]) -> List[types.TextContent]:
+        """处理缓存失效工具调用"""
+        database_name = arguments.get("database")
+        table_name = arguments.get("table")
+        
+        if database_name or table_name:
+            # 使特定缓存失效
+            self.cache_manager.invalidate_for_sql(f"SELECT * FROM {table_name or '*'}")
+            message = f"Cache invalidated for {database_name or 'all databases'}"
+        else:
+            # 使所有缓存失效
+            self.cache_manager.cache.invalidate_all()
+            message = "All cache invalidated"
+        
+        result = {
+            "message": message,
+            "cache_stats": self.cache_manager.get_stats()
+        }
+        
+        return [types.TextContent(
+            type="text",
+            text=self._format_result(result)
+        )]
     
     def _format_result(self, result: Dict[str, Any]) -> str:
         """格式化结果为可读文本"""

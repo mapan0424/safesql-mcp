@@ -8,17 +8,19 @@ from dataclasses import dataclass
 
 from .rules import RiskLevel, RiskRule, RiskAssessment, DefaultRiskRules
 from .analyzer import SQLAnalyzer
+from .injection import SQLInjectionDetector, InjectionRiskLevel
 
 
 class RiskEngine:
     """SQL 风险审查引擎"""
     
-    def __init__(self, custom_rules: Optional[List[RiskRule]] = None):
+    def __init__(self, custom_rules: Optional[List[RiskRule]] = None, enable_injection_detection: bool = True):
         """
         初始化风险引擎
         
         Args:
             custom_rules: 自定义规则列表，如果为 None 则使用默认规则
+            enable_injection_detection: 是否启用注入检测
         """
         self.analyzer = SQLAnalyzer()
         
@@ -38,6 +40,9 @@ class RiskEngine:
         
         for rule in self.rules:
             self._rules_by_level[rule.level].append(rule)
+        
+        # 初始化注入检测器
+        self.injection_detector = SQLInjectionDetector() if enable_injection_detection else None
     
     def add_rule(self, rule: RiskRule) -> None:
         """添加单个规则"""
@@ -94,6 +99,44 @@ class RiskEngine:
                     message=rule.message,
                     matched_rule=rule,
                     suggestions=[self._get_suggestion(rule)],
+                    explain_plan=None,
+                    performance_warnings=[]
+                )
+        
+        # 检查注入风险
+        if self.injection_detector:
+            injection_risks = self.injection_detector.detect(sql)
+            if injection_risks:
+                # 获取最高风险等级
+                highest_risk = self.injection_detector.get_highest_risk_level(sql)
+                
+                # 映射到风险等级
+                risk_level_mapping = {
+                    InjectionRiskLevel.LOW: RiskLevel.LOW,
+                    InjectionRiskLevel.MEDIUM: RiskLevel.MEDIUM,
+                    InjectionRiskLevel.HIGH: RiskLevel.HIGH,
+                    InjectionRiskLevel.CRITICAL: RiskLevel.HIGH,
+                }
+                
+                risk_level = risk_level_mapping.get(highest_risk, RiskLevel.MEDIUM)
+                
+                # 构建消息
+                messages = [risk["message"] for risk in injection_risks]
+                message = "注入风险检测: " + "; ".join(messages)
+                
+                # 构建建议
+                suggestions = [
+                    "使用参数化查询替代字符串拼接",
+                    "对用户输入进行严格的验证和过滤",
+                    "使用最小权限原则配置数据库用户"
+                ]
+                
+                return RiskAssessment(
+                    sql=sql,
+                    risk_level=risk_level,
+                    message=message,
+                    matched_rule=None,
+                    suggestions=suggestions,
                     explain_plan=None,
                     performance_warnings=[]
                 )
@@ -229,6 +272,10 @@ class RiskEngine:
             "enabled_rules": sum(1 for r in self.rules if r.enabled),
             "disabled_rules": sum(1 for r in self.rules if not r.enabled),
         }
+        
+        # 添加注入检测统计
+        if self.injection_detector:
+            summary["injection_detection"] = self.injection_detector.get_stats()
         
         return summary
     

@@ -10,6 +10,7 @@ from pathlib import Path
 
 from ..core.rules import RiskRule, RiskLevel
 from ..databases.base import DatabaseConfig
+from ..databases.pool import PoolConfig
 
 
 @dataclass
@@ -44,6 +45,16 @@ class Config:
         "file": None
     })
     
+    # 性能配置
+    performance: Dict[str, Any] = field(default_factory=lambda: {
+        "cache": {
+            "enabled": True,
+            "max_size": 1000,
+            "ttl": 300
+        },
+        "query_timeout": 60
+    })
+    
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
         return {
@@ -64,7 +75,8 @@ class Config:
             ],
             "mcp_server": self.mcp_server,
             "explain": self.explain,
-            "logging": self.logging
+            "logging": self.logging,
+            "performance": self.performance
         }
 
 
@@ -111,7 +123,8 @@ def load_config(config_path: Optional[str] = None) -> Config:
                 env_var = password[2:-1]
                 password = os.getenv(env_var, "")
             
-            config.databases[name] = DatabaseConfig(
+            # 构建数据库配置
+            database_config = DatabaseConfig(
                 type=db_config.get("type", "postgresql"),
                 host=db_config.get("host", "localhost"),
                 port=db_config.get("port", 5432),
@@ -120,6 +133,8 @@ def load_config(config_path: Optional[str] = None) -> Config:
                 password=password,
                 options=db_config.get("options")
             )
+            
+            config.databases[name] = database_config
     
     # 解析风险规则配置
     if "risk_rules" in config_data:
@@ -181,6 +196,10 @@ def load_config(config_path: Optional[str] = None) -> Config:
     if "logging" in config_data:
         config.logging.update(config_data["logging"])
     
+    # 解析性能配置
+    if "performance" in config_data:
+        config.performance.update(config_data["performance"])
+    
     return config
 
 
@@ -222,7 +241,15 @@ def create_default_config(config_path: str) -> Config:
         port=5432,
         database="mydb",
         user="readonly_user",
-        password="${POSTGRES_PASSWORD}"
+        password="${POSTGRES_PASSWORD}",
+        options={
+            "pool": {
+                "min_size": 1,
+                "max_size": 10,
+                "max_idle_time": 300,
+                "max_lifetime": 3600
+            }
+        }
     )
     
     config.databases["mysql_example"] = DatabaseConfig(
@@ -231,7 +258,15 @@ def create_default_config(config_path: str) -> Config:
         port=3306,
         database="analytics",
         user="readonly_user",
-        password="${MYSQL_PASSWORD}"
+        password="${MYSQL_PASSWORD}",
+        options={
+            "pool": {
+                "min_size": 1,
+                "max_size": 10,
+                "max_idle_time": 300,
+                "max_lifetime": 3600
+            }
+        }
     )
     
     # 保存配置

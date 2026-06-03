@@ -14,6 +14,17 @@ databases:
       sslmode: require
       connect_timeout: 30
       application_name: safesql-mcp
+      # 使用异步驱动（性能更好）
+      async: true
+      # 连接池配置
+      pool:
+        min_size: 2
+        max_size: 10
+        max_idle_time: 300  # 5分钟
+        max_lifetime: 3600  # 1小时
+        timeout: 30  # 连接超时
+        retry_attempts: 3
+        retry_delay: 1.0
 
   # 分析数据库
   analytics_db:
@@ -26,6 +37,15 @@ databases:
     options:
       charset: utf8mb4
       connect_timeout: 30
+      # 连接池配置
+      pool:
+        min_size: 1
+        max_size: 5
+        max_idle_time: 300
+        max_lifetime: 3600
+        timeout: 30
+        retry_attempts: 3
+        retry_delay: 1.0
 
 # 风险审查规则
 risk_rules:
@@ -153,12 +173,6 @@ performance:
     enabled: true
     max_size: 1000
     ttl: 300  # 5 分钟
-
-  # 连接池
-  connection_pool:
-    min_size: 2
-    max_size: 10
-    timeout: 30
 
   # 查询超时
   query_timeout: 60  # 秒
